@@ -4,6 +4,7 @@
   "parameters": {
     "adminUsername": {
       "type": "string",
+      "defaultValue": "jegebh",
       "metadata": {
         "description": "Admin username for VMs"
       }
@@ -147,7 +148,7 @@
           "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('availabilitySetName'))]"
         },
         "hardwareProfile": {
-          "vmSize": "Basic_A0"
+          "vmSize": "Standard_B1s"
         },
         "osProfile": {
           "computerName": "[concat('vm', copyIndex())]",
@@ -181,6 +182,8 @@
     }
   ],
   "outputs": {
+
+
 
   }
 }
