@@ -4,7 +4,7 @@
   "parameters": {
     "adminUsername": {
       "type": "string",
-      "defaultValue": "jegebh",
+      "defaultValue": "superCool",
       "metadata": {
         "description": "Admin username for VMs"
       }
@@ -13,15 +13,6 @@
       "type": "string",
       "metadata": {
         "description": "SSH Public Key"
-      }
-    },
-    "numberOfInstances": {
-      "type": "int",
-      "defaultValue": 2,
-      "minValue": 2,
-      "maxValue": 5,
-      "metadata": {
-        "description": "Number of VMs to deploy"
       }
     },
     "OS": {
@@ -36,12 +27,13 @@
     }
   },
   "variables": {
-    "virtualNetworkName": "webVNET",
+    "prefix": "jegebh",
+    "virtualNetworkName": "[concat(variables('prefix'), 'VNET')]",
     "addressPrefix": "10.180.0.0/16",
-    "subnet1Name": "webSubnet",
-    "subnet1Prefix": "10.180.1.0/24",
-    "subnet1Ref": "[resourceId('Microsoft.Network/virtualNetworks/subnets',variables('virtualNetworkName'),variables('subnet1Name'))]",
-    "availabilitySetName": "webAvSet",
+    "subnetName": "[concat(variables('prefix'), 'Subnet')]",
+    "subnetPrefix": "10.180.1.0/24",
+    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets',variables('virtualNetworkName'),variables('subnetName'))]",
+    "availabilitySetName": "[concat(variables('prefix'), 'AvSet')]",
     "Ubuntu": {
       "publisher": "Canonical",
       "offer": "UbuntuServer",
@@ -53,17 +45,6 @@
     "publicIPAddressType": "Dynamic"
   },
   "resources": [
-    {
-      "type": "Microsoft.Compute/availabilitySets",
-      "name": "[variables('availabilitySetName')]",
-      "apiVersion": "2016-04-30-preview",
-      "location": "[resourceGroup().location]",
-      "properties": {
-        "platformFaultDomainCount": 2,
-        "platformUpdateDomainCount": 2,
-        "managed": true
-      }
-    },
     {
       "type": "Microsoft.Network/virtualNetworks",
       "name": "[variables('virtualNetworkName')]",
@@ -77,9 +58,9 @@
         },
         "subnets": [
           {
-            "name": "[variables('subnet1Name')]",
+            "name": "[variables('subnetName')]",
             "properties": {
-              "addressPrefix": "[variables('subnet1Prefix')]"
+              "addressPrefix": "[variables('subnetPrefix')]"
             }
           }
         ]
@@ -88,43 +69,34 @@
     {
       "apiVersion": "2015-06-15",
       "type": "Microsoft.Network/publicIPAddresses",
-      "name": "[concat('web', copyindex(), 'PublicIP')]",
+      "name": "[concat(variables('prefix'), 'PublicIP')]",
       "location": "[resourceGroup().location]",
-      "copy": {
-        "name": "publicIpLoop",
-        "count": "[parameters('numberOfInstances')]"
-      },
       "properties": {
         "publicIPAllocationMethod": "[variables('publicIPAddressType')]",
         "dnsSettings": {
-          "domainNameLabel": "[concat('web', copyindex(), 'dns')]"
+          "domainNameLabel": "[concat(variables('prefix'), 'dns')]"
         }
       }
     },
     {
       "type": "Microsoft.Network/networkInterfaces",
-      "name": "[concat('web', copyindex(), 'Nic')]",
+      "name": "[concat(variables('prefix'), 'Nic')]",
       "apiVersion": "2016-03-30",
       "location": "[resourceGroup().location]",
-      "copy": {
-        "name": "nicLoop",
-        "count": "[parameters('numberOfInstances')]"
-      },
       "dependsOn": [
-        "publicIpLoop",
         "[variables('virtualNetworkName')]"
       ],
       "properties": {
         "ipConfigurations": [
           {
-            "name": "ipconfig1",
+            "name": "ipconfig",
             "properties": {
               "privateIPAllocationMethod": "Dynamic",
               "publicIPAddress": {
-                "id": "[resourceId('Microsoft.Network/publicIPAddresses/', concat('web', copyindex(), 'PublicIP'))]"
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses/', concat(variables('prefix'), 'PublicIP'))]"
               },
               "subnet": {
-                "id": "[variables('subnet1Ref')]"
+                "id": "[variables('subnetRef')]"
               }
             }
           }
@@ -133,25 +105,18 @@
     },
     {
       "type": "Microsoft.Compute/virtualMachines",
-      "name": "[concat('web', copyIndex(), 'VM')]",
+      "name": "[concat(variables('prefix'), 'VM')]",
       "apiVersion": "2016-04-30-preview",
       "location": "[resourceGroup().location]",
-      "copy": {
-        "name": "virtualMachineLoop",
-        "count": "[parameters('numberOfInstances')]"
-      },
       "dependsOn": [
-        "nicLoop"
+        "[concat(variables('prefix'), 'Nic')]",
       ],
       "properties": {
-        "availabilitySet": {
-          "id": "[resourceId('Microsoft.Compute/availabilitySets', variables('availabilitySetName'))]"
-        },
         "hardwareProfile": {
           "vmSize": "Standard_B1s"
         },
         "osProfile": {
-          "computerName": "[concat('vm', copyIndex())]",
+          "computerName": "[concat(variables('prefix'), 'VM')]",
           "adminUsername": "[parameters('adminUsername')]",
           "linuxConfiguration": {
             "disablePasswordAuthentication": true,
@@ -174,7 +139,7 @@
         "networkProfile": {
           "networkInterfaces": [
             {
-              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat('web', copyindex(), 'Nic'))]"
+              "id": "[resourceId('Microsoft.Network/networkInterfaces',concat(variables('prefix'), 'Nic'))]"
             }
           ]
         }
@@ -183,7 +148,7 @@
   ],
   "outputs": {
     "ipaddress": {
-        "value": "[reference('web0PublicIP').ipAddress]",
+        "value": "[reference(concat(variables('prefix'), 'PublicIP')).IpAddress]",
         "type": "string"
     }
   }
